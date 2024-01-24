@@ -19,6 +19,6 @@ Created a simple version of Yahtzee using the terminal. Currenty just the underl
 - [Object Oriented Design with Rust]([http://url.link.goes.here](https://stevedonovan.github.io/rust-gentle-intro/object-orientation.html)https://stevedonovan.github.io/rust-gentle-intro/object-orientation.html)
 - [Creating Vectors of Structs]([http://url.link.goes.here](https://users.rust-lang.org/t/can-we-make-vector-of-structs-if-yes-than-how-to-make-and-use-it/19476)https://users.rust-lang.org/t/can-we-make-vector-of-structs-if-yes-than-how-to-make-and-use-it/19476)
 
-- ## Future Work
+## Future Work
 - Use GUI libraries for output
 - Create a UI instead of using the terminal
