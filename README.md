@@ -1,4 +1,4 @@
-#Yahtzee - Rust
+# Yahtzee - Rust
 ## Description
 Created a simple version of Yahtzee using the terminal. Currenty just the underlying traits/structs (see ToDo)
 
