@@ -93,14 +93,16 @@ impl Points for Section1 {
     fn calc_score(&mut self, dice: &Vec<Die>) {
         assert!(self.score.points == 0);
         self.score.filled = true;
+        self.score.points = 50;
 
+        /*
         // For every die,
         for die in dice {
             // Only add points for those of the specified value
             if die.num == self.value {
                 self.score.points += die.num as i32;
             }
-        }
+        }*/
     }
 }
 // To access score's values at the top level..
@@ -243,18 +245,36 @@ fn display_scorecard(scorecard: &Vec<&mut &mut dyn PointSection>) {
 
 // Pick a choice from the displayed menu, automatically sets to 'Pick score' if out of rolls
 fn menu_choice(rolls: i32) -> u8 {
-    assert!(rolls >= 0);
+    assert!(rolls >= 0); // Assert game in valid state
+    assert!(rolls <= 3);
 
-    // If there are no rolls left,
-    if rolls == 0 {
-        // Can only pick a score section to fill (no more rolling/freezing)
-        return 3;
-    }
-
-    // Otherwise, not out of rolls
     // Display the menu, prompt for a choice
     println!("\nMenu:\n[1] Roll Dice\n[2] Freeze Dice\n[3] Pick Score\n[0] Quit\n"); // Display the menu
-    return get_int("Pick a menu choice", &0, &3);
+
+    // Until the user has picked a valid choice,
+    loop {
+        let choice = get_int("Pick a menu choice", &0, &3);
+
+        // always allow the user to quit
+        if choice == 0 {
+            return choice;
+        } else if
+            // If the user is out of rolls, but hasn't chosen to end their turn,
+            (rolls == 0) & (choice != 3)
+        {
+            // Cannot roll if out of rolls
+            println!("Please pick a score section.");
+        } else if
+            // If the user hasn't rolled yet, but is chooseing something else,
+            (rolls == 3) & (choice != 1)
+        {
+            // Cannot roll if out of rolls
+            println!("Please roll first.");
+        } else {
+            // Valid choice
+            return choice;
+        }
+    }
 }
 
 /*fn create_scorecard() -> Vec<&mut dyn PointSection> {
@@ -367,64 +387,64 @@ fn reset_turn(rolls: &mut i32, dice: &mut Vec<Die>) {
 
 fn main() {
     // Create all the PointSections for the scorecard
-    let mut s1_1: &mut dyn PointSection = &mut(Section1 {
-        score: Score { name: "Aces", points: 0, filled: false },
+    let mut s1_1: &mut dyn PointSection = &mut (Section1 {
+        score: Score { name: "1. Aces", points: 0, filled: false },
         value: 1,
     });
-    let mut s1_2: &mut dyn PointSection = &mut(Section1 {
-        score: Score { name: "Twos", points: 0, filled: false },
+    let mut s1_2: &mut dyn PointSection = &mut (Section1 {
+        score: Score { name: "2. Twos", points: 0, filled: false },
         value: 2,
     });
-    let mut s1_3: &mut dyn PointSection = &mut(Section1 {
-        score: Score { name: "Threes", points: 0, filled: false },
+    let mut s1_3: &mut dyn PointSection = &mut (Section1 {
+        score: Score { name: "3. Threes", points: 0, filled: false },
         value: 3,
     });
-    let mut s1_4: &mut dyn PointSection = &mut(Section1 {
-        score: Score { name: "Fours", points: 0, filled: false },
+    let mut s1_4: &mut dyn PointSection = &mut (Section1 {
+        score: Score { name: "4. Fours", points: 0, filled: false },
         value: 4,
     });
-    let mut s1_5: &mut dyn PointSection = &mut(Section1 {
-        score: Score { name: "Fives", points: 0, filled: false },
+    let mut s1_5: &mut dyn PointSection = &mut (Section1 {
+        score: Score { name: "5. Fives", points: 0, filled: false },
         value: 5,
     });
-    let mut s1_6: &mut dyn PointSection = &mut(Section1 {
-        score: Score { name: "Sixes", points: 0, filled: false },
+    let mut s1_6: &mut dyn PointSection = &mut (Section1 {
+        score: Score { name: "6. Sixes", points: 0, filled: false },
         value: 6,
     });
 
     // 3, 4, or 5 of a kind
-    let mut s2_3: &mut dyn PointSection = &mut(Section2 {
-        score: Score { name: "3 of a Kind", points: 0, filled: false },
+    let mut s2_3: &mut dyn PointSection = &mut (Section2 {
+        score: Score { name: "7. 3 of a Kind", points: 0, filled: false },
         num: 3,
     });
-    let mut s2_4: &mut dyn PointSection = &mut(Section2 {
-        score: Score { name: "4 of a Kind", points: 0, filled: false },
+    let mut s2_4: &mut dyn PointSection = &mut (Section2 {
+        score: Score { name: "8. 4 of a Kind", points: 0, filled: false },
         num: 4,
     });
-    let mut s2_5: &mut dyn PointSection = &mut(Section2 {
-        score: Score { name: "YAHTZEE", points: 0, filled: false },
+    let mut s2_5: &mut dyn PointSection = &mut (Section2 {
+        score: Score { name: "9. YAHTZEE", points: 0, filled: false },
         num: 5,
     });
 
     // Straights of 3, 4, or 5 (all different)
-    let mut s3_3: &mut dyn PointSection = &mut(Section3 {
-        score: Score { name: "Small Straight", points: 0, filled: false },
+    let mut s3_3: &mut dyn PointSection = &mut (Section3 {
+        score: Score { name: "10. Small Straight", points: 0, filled: false },
         num: 3,
     });
-    let mut s3_4: &mut dyn PointSection = &mut(Section3 {
-        score: Score { name: "Large Straight", points: 0, filled: false },
+    let mut s3_4: &mut dyn PointSection = &mut (Section3 {
+        score: Score { name: "11. Large Straight", points: 0, filled: false },
         num: 4,
     });
-    let mut s3_5: &mut dyn PointSection = &mut(Section3 {
-        score: Score { name: "Full House", points: 0, filled: false },
+    let mut s3_5: &mut dyn PointSection = &mut (Section3 {
+        score: Score { name: "12. Full House", points: 0, filled: false },
         num: 5,
     });
 
     // Chance (counts up all, as a points for '0 of a kind' Section)
-    let mut chance: &mut dyn PointSection = &mut(Section2 {
-        score: Score { name: "Chance", points: 0, filled: false },
+    let mut chance: &mut dyn PointSection = &mut (Section2 {
+        score: Score { name: "13. Chance", points: 0, filled: false },
         num: 0,
-    });    
+    });
 
     // Keep all PointSections in a vector (ToDo, place in an array? No sections are added/removed)
     let mut scorecard: Vec<&mut &mut dyn PointSection> = vec![
@@ -458,21 +478,27 @@ fn main() {
         display_scorecard(&scorecard);
         println!("Total Score: {}", total_score);
 
+        // Assert game is in a valid state
+        assert!(rolls >= 0);
+        assert!(rolls <= 3); // TODO: set 3 as a global const variable instead of magic number
+        assert!(empty_section(&scorecard));
+
+        // Depending on the user's choice,
         match menu_choice(rolls) {
             // 1. Roll the Dice
             1 => {
-                // Roll check here or in menu_choice?
-                if rolls > 0 {
-                    rolls -= 1;
-                    // For every die in the vector,
-                    for die in &mut game_dice {
-                        die.roll();
-                    }
+                rolls -= 1;
+
+                // For every die in the vector,
+                for die in &mut game_dice {
+                    die.roll();
                 }
             }
 
             // 2. Freeze/unfreeze a certain Die
             2 => {
+                display_dice(&game_dice); // Display dice
+
                 // Pick a die to freeze
                 let freeze_i: usize = usize::from(
                     get_int("Which die should be frozen/unfrozen?", &1, &(game_dice.len() as u8)) -
@@ -485,8 +511,8 @@ fn main() {
 
             // 3. Pick point section
             3 => {
-                assert!(empty_section(&scorecard));
-                let section_i: usize = usize::from(get_int("", &1, &(scorecard.len() as u8)) - 1);
+                display_scorecard(&scorecard); // Display scorecard sections
+                let section_i: usize = usize::from(get_int("Pick a section", &1, &(scorecard.len() as u8)) - 1);
 
                 // If the section has not been filled,
                 if !scorecard[section_i].is_filled() {
@@ -498,12 +524,12 @@ fn main() {
                     println!("That section is already filled.");
                 }
             }
-            // Add option to quit early?
+            // Exit the game
             0 => {
                 return;
             }
 
-            // Not a menu option
+            // Invalid menu option
             _ => {
                 println!("Invalid choice.");
             }
