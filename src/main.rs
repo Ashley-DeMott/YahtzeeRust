@@ -3,47 +3,40 @@
     Project: Yahtzee
     Description: Creating a game of Yahtzee using Rust
 */
-
 use std::io::Write;
-use std::collections::HashMap;
 use rand::Rng;
+use std::collections::HashMap;
 
 // The ability to roll a random value
 trait Random {
     fn roll(&mut self);
 }
 
-// Allow cloning of this, used with vec![]
+// Allow cloning of Die, used with vec![]
 #[allow(unused)]
 #[derive(Debug, Clone)]
 struct Die {
     num: u8, // The Die's number
     frozen: bool, // If the Die cannot be rolled
 }
-
+// Implement the default values for a DIe
 impl Default for Die {
     fn default() -> Die {
+        // Create a default Die
         return Die {
             num: 0,
             frozen: false,
         };
     }
 }
-
+// Implement the functions of Random (can roll a Die)
 impl Random for Die {
     fn roll(&mut self) {
+        // Randomize the die value if it isn't frozen
         if !self.frozen {
-            self.num = rand::thread_rng().gen_range(1..6);
+            self.num = rand::thread_rng().gen_range(1..7); // 1 - 6 (inclusive)
         }
     }
-}
-
-// TODO: Rename traits/structs, currenlty just testing functionality
-
-// The ability to calculate # points from criteria (specific to Section types (# of, # in a row, etc))
-trait Points {
-    fn fill(&mut self);
-    fn calc_score(&mut self, dice: &Vec<Die>);
 }
 
 // Getters, immutable and perform the same for ALL scorecard Sections
@@ -54,13 +47,17 @@ trait Section {
     fn print(&self);
 }
 
-trait PointSection: Points + Section {}
+// The ability to calculate points from a vector of Die
+trait Points {
+    fn calc_score(&self, dice: &Vec<Die>) -> i32;
+    fn set_score(&mut self, score: i32);
+}
 
-// All Scores have these attributes
+// All Scores have these attributes and implement Section
 struct Score {
-    filled: bool,
-    points: i32,
-    name: &'static str, // Strings are fun, size not known
+    filled: bool, // If the score section has been filled
+    points: i32, // The point value of the score section
+    name: &'static str, // Name of the score section
 }
 impl Section for Score {
     fn is_filled(&self) -> bool {
@@ -73,6 +70,7 @@ impl Section for Score {
         return self.name;
     }
     fn print(&self) {
+        // Display points if filled, otherwise empty string
         print!("{0}: {1: <3}", self.name, if self.filled {
             self.points.to_string()
         } else {
@@ -83,26 +81,30 @@ impl Section for Score {
 
 // Get points for having specific number/value
 struct Section1 {
-    score: Score, // Has a combo score value and filled status (ALL Sections have this, easier to edit in one place, right?)
-    value: u8,
+    score: Score, // Has a Score section
+    value: u8, // The Die value that counts for points
 }
 impl Points for Section1 {
-    fn fill(&mut self) {
-        self.score.filled = true;
-    }
-    fn calc_score(&mut self, dice: &Vec<Die>) {
-        assert!(self.score.points == 0);
-        self.score.filled = true;
-        self.score.points = 50;
+    fn calc_score(&self, dice: &Vec<Die>) -> i32 {
+        let mut score = 0;
 
-        /*
         // For every die,
         for die in dice {
             // Only add points for those of the specified value
             if die.num == self.value {
-                self.score.points += die.num as i32;
+                score += die.num as i32;
             }
-        }*/
+        }
+        return score;
+    }
+    fn set_score(&mut self, score: i32) {
+        // Assert that the score hasn't already been set
+        assert!(self.score.points == 0);
+        assert!(!self.score.filled);
+
+        // Fill with the given score
+        self.score.filled = true;
+        self.score.points = score;
     }
 }
 // To access score's values at the top level..
@@ -124,15 +126,11 @@ impl Section for Section1 {
 // Get points for having # of a kind, YAHTZEE = 5 of a kind
 struct Section2 {
     score: Score,
-    num: u8,
+    value: u8,
 }
 impl Points for Section2 {
-    fn fill(&mut self) {
-        self.score.filled = true;
-    }
-    fn calc_score(&mut self, dice: &Vec<Die>) {
-        assert!(self.score.points == 0);
-        self.score.filled = true;
+    fn calc_score(&self, dice: &Vec<Die>) -> i32 {
+        let mut score = 0;
 
         // Create a hashmap (key: die num, value: # in game_dice)
         let mut counts: HashMap<u8, u8> = HashMap::new();
@@ -151,10 +149,21 @@ impl Points for Section2 {
         let mode = counts.values().cloned().max().unwrap_or(0);
 
         // If enough of a single type, points = dice total [Hasbro Yahtzee rules]
-        if mode > self.num {
-            self.score.points = dice_total;
+        if mode > self.value {
+            score = dice_total;
         }
-        // Otherwise, filled, but with a value of 0 (default)
+
+        // Return the calculated score
+        return score;
+    }
+    fn set_score(&mut self, score: i32) {
+        // Assert that the score hasn't already been set
+        assert!(self.score.points == 0);
+        assert!(!self.score.filled);
+
+        // Fill with the given score
+        self.score.filled = true;
+        self.score.points = score;
     }
 }
 impl Section for Section2 {
@@ -175,18 +184,87 @@ impl Section for Section2 {
 // Small (3), Large(4), and full/one-of-a-kind(5) straights (num = num in a row needed)
 struct Section3 {
     score: Score,
-    num: i8,
+    value: u8,
 }
 impl Points for Section3 {
-    fn fill(&mut self) {
-        self.score.filled = true;
-    }
-    fn calc_score(&mut self, dice: &Vec<Die>) {
-        assert!(self.score.points == 0);
-        self.score.filled = true;
+    fn calc_score(&self, dice: &Vec<Die>) -> i32 {
+        // For every die,
+        let mut present: Vec<u8> = Vec::new();
 
-        // ignores duplicates,
-        // self.score =
+        let mut straight = false;
+
+        // Get a true/false for every value
+        for die in dice {
+            // If not already in the list,
+            if !present.contains(&die.num) {
+                present.push(die.num);
+            }
+        }
+
+        // TODO: Remake this without hardcoded straights
+        // For a straight of five (12345 or 23456)
+        if self.value == 5 {
+            // If there isn't a 1,
+            if !present.contains(&1) {
+                // If there isn't a 6,
+                if !present.contains(&6) {
+                    return 0; // Doesn't have a 1 or 6, cannot be a straight of 5
+                }
+                // There is a 6, but not a 1
+            } else {
+                if present.contains(&6) {
+                    return 0; // Can't have both a 1 or 6 in a straight of 5
+                }
+                // There is a 1, but no 6
+            }
+
+            // Both straights contain 2345
+            straight =
+                present.contains(&2) &
+                present.contains(&3) &
+                present.contains(&4) &
+                present.contains(&5);
+        }
+        if self.value == 4 {
+            // Hardcoded straights
+            straight =
+                (present.contains(&1) &
+                    present.contains(&2) &
+                    present.contains(&3) &
+                    present.contains(&4)) |
+                (present.contains(&2) &
+                    present.contains(&3) &
+                    present.contains(&4) &
+                    present.contains(&5)) |
+                (present.contains(&3) &
+                    present.contains(&4) &
+                    present.contains(&5) &
+                    present.contains(&6));
+        }
+        if self.value == 3 {
+            // Hardcoded straights
+            straight =
+                (present.contains(&1) & present.contains(&2) & present.contains(&3)) |
+                (present.contains(&2) & present.contains(&3) & present.contains(&4)) |
+                (present.contains(&3) & present.contains(&4) & present.contains(&5)) |
+                (present.contains(&4) & present.contains(&5) & present.contains(&6));
+        }
+
+        // Return 30, 40, or 50 (depending on straight size) if there is a straight
+        return if straight {
+            (self.value * 10) as i32
+        } else {
+            0
+        };
+    }
+    fn set_score(&mut self, score: i32) {
+        // Assert that the score hasn't already been set
+        assert!(self.score.points == 0);
+        assert!(!self.score.filled);
+
+        // Fill with the given score
+        self.score.filled = true;
+        self.score.points = score;
     }
 }
 impl Section for Section3 {
@@ -204,7 +282,11 @@ impl Section for Section3 {
     }
 }
 
-// Under a shared trait, can call methods from both
+// Combination of the traits Points ans Section, all structs
+//  implementing both can be in a collection of &dyn PointSections
+trait PointSection: Points + Section {}
+
+// All score sections are under a shared trait
 impl PointSection for Section1 {}
 impl PointSection for Section2 {}
 impl PointSection for Section3 {}
@@ -265,7 +347,7 @@ fn menu_choice(rolls: i32) -> u8 {
             // Cannot roll if out of rolls
             println!("Please pick a score section.");
         } else if
-            // If the user hasn't rolled yet, but is chooseing something else,
+            // If the user hasn't rolled yet, but is choosing something else,
             (rolls == 3) & (choice != 1)
         {
             // Cannot roll if out of rolls
@@ -276,63 +358,6 @@ fn menu_choice(rolls: i32) -> u8 {
         }
     }
 }
-
-/*fn create_scorecard() -> Vec<&mut dyn PointSection> {
-    // NOTE: Not used due to issues with mutablilty and ownership
-    // This worked when PointSections were NOT mutable
-
-    // Create a collection of PointSections, which are mutable
-    let mut scorecard: Vec<&mut dyn PointSection> = Vec::new();
-
-    // Totals for a certain number (1 - 6)
-    scorecard.push(
-        &mut(Section1 { score: Score { name: "Aces", points: 0, filled: false }, value: 1 })
-    );
-    scorecard.push(
-        &mut(Section1 { score: Score { name: "Twos", points: 0, filled: false }, value: 2 })
-    );
-    scorecard.push(
-        &mut(Section1 { score: Score { name: "Threes", points: 0, filled: false }, value: 3 })
-    );
-    scorecard.push(
-        &mut(Section1 { score: Score { name: "Fours", points: 0, filled: false }, value: 4 })
-    );
-    scorecard.push(
-        &mut(Section1 { score: Score { name: "Fives", points: 0, filled: false }, value: 5 })
-    );
-    scorecard.push(
-        &mut(Section1 { score: Score { name: "Sixes", points: 0, filled: false }, value: 6 })
-    );
-
-    // 3, 4, or 5 of a kind
-    scorecard.push(
-        &mut(Section2 { score: Score { name: "3 of a Kind", points: 0, filled: false }, num: 3 })
-    );
-    scorecard.push(
-        &mut(Section2 { score: Score { name: "4 of a Kind", points: 0, filled: false }, num: 4 })
-    );
-    scorecard.push(
-        &mut(Section2 { score: Score { name: "YAHTZEE", points: 0, filled: false }, num: 5 })
-    );
-
-    // Straights of 3, 4, or 5 (all different)
-    scorecard.push(
-        &mut(Section3 { score: Score { name: "Small Straight", points: 0, filled: false }, num: 3 })
-    );
-    scorecard.push(
-        &mut(Section3 { score: Score { name: "Large Straight", points: 0, filled: false }, num: 4 })
-    );
-    scorecard.push(
-        &mut(Section3 { score: Score { name: "Full House", points: 0, filled: false }, num: 5 })
-    );
-
-    // Chance
-    scorecard.push(
-        &mut(Section2 { score: Score { name: "Chance", points: 0, filled: false }, num: 0 })
-    ); // # of a kind?
-
-    return scorecard;
-}*/
 
 // Checks if there is an empty section in the Scorecard
 fn empty_section(scorecard: &Vec<&mut &mut dyn PointSection>) -> bool {
@@ -346,6 +371,15 @@ fn empty_section(scorecard: &Vec<&mut &mut dyn PointSection>) -> bool {
 
     // If none are empty, return false, the game is over
     return false;
+}
+
+// Calculate the total game score
+fn get_score(scorecard: &Vec<&mut &mut dyn PointSection>) -> i32 {
+    let mut total = 0;
+    for section in scorecard {
+        total += section.get_points();
+    }
+    return total;
 }
 
 // Min and max acceptable values (within u8, positive integers)
@@ -415,38 +449,38 @@ fn main() {
     // 3, 4, or 5 of a kind
     let mut s2_3: &mut dyn PointSection = &mut (Section2 {
         score: Score { name: "7. 3 of a Kind", points: 0, filled: false },
-        num: 3,
+        value: 3,
     });
     let mut s2_4: &mut dyn PointSection = &mut (Section2 {
         score: Score { name: "8. 4 of a Kind", points: 0, filled: false },
-        num: 4,
+        value: 4,
     });
     let mut s2_5: &mut dyn PointSection = &mut (Section2 {
         score: Score { name: "9. YAHTZEE", points: 0, filled: false },
-        num: 5,
+        value: 5,
     });
 
     // Straights of 3, 4, or 5 (all different)
     let mut s3_3: &mut dyn PointSection = &mut (Section3 {
         score: Score { name: "10. Small Straight", points: 0, filled: false },
-        num: 3,
+        value: 3,
     });
     let mut s3_4: &mut dyn PointSection = &mut (Section3 {
         score: Score { name: "11. Large Straight", points: 0, filled: false },
-        num: 4,
+        value: 4,
     });
     let mut s3_5: &mut dyn PointSection = &mut (Section3 {
         score: Score { name: "12. Full House", points: 0, filled: false },
-        num: 5,
+        value: 5,
     });
 
     // Chance (counts up all, as a points for '0 of a kind' Section)
     let mut chance: &mut dyn PointSection = &mut (Section2 {
         score: Score { name: "13. Chance", points: 0, filled: false },
-        num: 0,
+        value: 0,
     });
 
-    // Keep all PointSections in a vector (ToDo, place in an array? No sections are added/removed)
+    // Keep all PointSections in a vector
     let mut scorecard: Vec<&mut &mut dyn PointSection> = vec![
         &mut s1_1,
         &mut s1_2,
@@ -465,12 +499,8 @@ fn main() {
 
     // Create a Vector of 5 dice
     let mut game_dice: Vec<Die> = vec![Die::default(); 5];
-    let mut total_score = 0; // Add from scorecard (call summation each time, or only when new points added?)
-    let mut rolls = 3; // Have a const int for max_rolls?
-    let mut pick = false; // If the Player has picked a score section
-
-    // For a turn: display dice, allow player choice
-    // For a round: rolls > 0, a score section must be picked (ends turn even if rolls > 0)
+    let mut total_score = 0; // Total points from all scorecard sections
+    let mut rolls = 3; // TODO: const int of 3 for starting rolls?
 
     // While the scorecard is not full,
     while empty_section(&scorecard) {
@@ -480,7 +510,7 @@ fn main() {
 
         // Assert game is in a valid state
         assert!(rolls >= 0);
-        assert!(rolls <= 3); // TODO: set 3 as a global const variable instead of magic number
+        assert!(rolls <= 3);
         assert!(empty_section(&scorecard));
 
         // Depending on the user's choice,
@@ -511,17 +541,28 @@ fn main() {
 
             // 3. Pick point section
             3 => {
-                display_scorecard(&scorecard); // Display scorecard sections
-                let section_i: usize = usize::from(get_int("Pick a section", &1, &(scorecard.len() as u8)) - 1);
+                let mut pick = false;
+                while !pick {
+                    display_scorecard(&scorecard); // Display scorecard sections
+                    let section_i: usize = usize::from(
+                        get_int("Pick a section", &1, &(scorecard.len() as u8)) - 1
+                    );
 
-                // If the section has not been filled,
-                if !scorecard[section_i].is_filled() {
-                    scorecard[section_i].fill();
+                    // If the section has not been filled,
+                    if !scorecard[section_i].is_filled() {
+                        pick = true;
 
-                    reset_turn(&mut rolls, &mut game_dice);
-                } else {
-                    // Tell the user it is already filled
-                    println!("That section is already filled.");
+                        // Calculate and set the score
+                        let score = scorecard[section_i].calc_score(&game_dice);
+                        scorecard[section_i].set_score(score);
+
+                        // Recalculate the total score and reset for next turn
+                        total_score = get_score(&scorecard);
+                        reset_turn(&mut rolls, &mut game_dice);
+                    } else {
+                        // Tell the user it is already filled
+                        println!("That section is already filled.");
+                    }
                 }
             }
             // Exit the game
@@ -534,5 +575,11 @@ fn main() {
                 println!("Invalid choice.");
             }
         }
+    }
+
+    // If the game was finished,
+    if !empty_section(&scorecard) {
+        // Display final score
+        println!("Game over! Total score: {}", total_score);
     }
 }
