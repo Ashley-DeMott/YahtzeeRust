@@ -326,29 +326,29 @@ fn display_scorecard(scorecard: &Vec<&mut &mut dyn PointSection>) {
 }
 
 // Pick a choice from the displayed menu, automatically sets to 'Pick score' if out of rolls
-fn menu_choice(rolls: i32) -> u8 {
-    assert!(rolls >= 0); // Assert game in valid state
-    assert!(rolls <= 3);
+fn menu_choice(rolls: u8) -> u8 {
+    assert!(rolls >= 0 as u8); // Assert game in valid state
+    assert!(rolls <= MAX_ROLLS);
 
     // Display the menu, prompt for a choice
     println!("\nMenu:\n[1] Roll Dice\n[2] Freeze Dice\n[3] Pick Score\n[0] Quit\n"); // Display the menu
 
     // Until the user has picked a valid choice,
     loop {
-        let choice = get_int("Pick a menu choice", &0, &3);
+        let choice = get_int("Pick a menu choice", &0, &MAX_ROLLS);
 
         // always allow the user to quit
         if choice == 0 {
             return choice;
         } else if
             // If the user is out of rolls, but hasn't chosen to end their turn,
-            (rolls == 0) & (choice != 3)
+            (rolls == 0) & (choice != MAX_ROLLS)
         {
             // Cannot roll if out of rolls
             println!("Please pick a score section.");
         } else if
             // If the user hasn't rolled yet, but is choosing something else,
-            (rolls == 3) & (choice != 1)
+            (rolls == MAX_ROLLS) & (choice != 1)
         {
             // Cannot roll if out of rolls
             println!("Please roll first.");
@@ -408,9 +408,9 @@ fn get_int(prompt: &str, min: &u8, max: &u8) -> u8 {
 }
 
 // Reset for the next turn
-fn reset_turn(rolls: &mut i32, dice: &mut Vec<Die>) {
+fn reset_turn(rolls: &mut u8, dice: &mut Vec<Die>) {
     assert!(dice.len() == 5); // Assert number of dice is the same
-    *rolls = 3;
+    *rolls = MAX_ROLLS;
 
     // Reset all the Die (unfreeze and set to 0)
     for die in dice {
@@ -418,6 +418,9 @@ fn reset_turn(rolls: &mut i32, dice: &mut Vec<Die>) {
         die.num = 0;
     }
 }
+
+// The number of rolls the player starts each round with
+static MAX_ROLLS: u8 = 3;
 
 fn main() {
     // Create all the PointSections for the scorecard
@@ -500,7 +503,7 @@ fn main() {
     // Create a Vector of 5 dice
     let mut game_dice: Vec<Die> = vec![Die::default(); 5];
     let mut total_score = 0; // Total points from all scorecard sections
-    let mut rolls = 3; // TODO: const int of 3 for starting rolls?
+    let mut rolls = MAX_ROLLS;
 
     // While the scorecard is not full,
     while empty_section(&scorecard) {
@@ -509,8 +512,8 @@ fn main() {
         println!("Total Score: {}", total_score);
 
         // Assert game is in a valid state
-        assert!(rolls >= 0);
-        assert!(rolls <= 3);
+        assert!(rolls >= 0 as u8);
+        assert!(rolls <= MAX_ROLLS);
         assert!(empty_section(&scorecard));
 
         // Depending on the user's choice,
