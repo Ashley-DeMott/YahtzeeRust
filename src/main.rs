@@ -149,7 +149,7 @@ impl Points for Section2 {
         let mode = counts.values().cloned().max().unwrap_or(0);
 
         // If enough of a single type, points = dice total [Hasbro Yahtzee rules]
-        if mode > self.value {
+        if mode >= self.value {
             score = dice_total;
         }
 
@@ -327,7 +327,7 @@ fn display_scorecard(scorecard: &Vec<&mut &mut dyn PointSection>) {
 
 // Pick a choice from the displayed menu, automatically sets to 'Pick score' if out of rolls
 fn menu_choice(rolls: u8) -> u8 {
-    assert!(rolls >= 0 as u8); // Assert game in valid state
+    assert!(rolls >= (0 as u8)); // Assert game in valid state
     assert!(rolls <= MAX_ROLLS);
 
     // Display the menu, prompt for a choice
@@ -503,16 +503,17 @@ fn main() {
     // Create a Vector of 5 dice
     let mut game_dice: Vec<Die> = vec![Die::default(); 5];
     let mut total_score = 0; // Total points from all scorecard sections
-    let mut rolls = MAX_ROLLS;
+    let mut rolls = MAX_ROLLS; // The number of rolls the player has left
 
     // While the scorecard is not full,
     while empty_section(&scorecard) {
+        // Display the dice, scoreboard, and total score
         display_dice(&game_dice);
         display_scorecard(&scorecard);
-        println!("Total Score: {}", total_score);
+        println!("Total Score: {total_score}");
 
         // Assert game is in a valid state
-        assert!(rolls >= 0 as u8);
+        assert!(rolls >= (0 as u8));
         assert!(rolls <= MAX_ROLLS);
         assert!(empty_section(&scorecard));
 
@@ -532,14 +533,21 @@ fn main() {
             2 => {
                 display_dice(&game_dice); // Display dice
 
-                // Pick a die to freeze
-                let freeze_i: usize = usize::from(
-                    get_int("Which die should be frozen/unfrozen?", &1, &(game_dice.len() as u8)) -
-                        1
+                // Pick a die to freeze, 0 to cancel
+                let choice = get_int(
+                    "Which die should be frozen/unfrozen?",
+                    &0,
+                    &(game_dice.len() as u8)
                 );
 
-                // Invert the frozen state
-                game_dice[freeze_i].frozen = !game_dice[freeze_i].frozen;
+                // If a Die has been chosen,
+                if choice != 0 {
+                    // Get the Die's index from the user's choice
+                    let freeze_i: usize = usize::from(choice - 1);
+
+                    // Invert the Die's frozen state
+                    game_dice[freeze_i].frozen = !game_dice[freeze_i].frozen;
+                }
             }
 
             // 3. Pick point section
