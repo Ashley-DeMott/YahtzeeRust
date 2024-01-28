@@ -2,6 +2,8 @@
 ## Description
 Created a simple version of Yahtzee using the terminal. The player can choose to roll die, freeze die, select a score section, or quit. When all the score sections have been filled, the game will be over and the total points will be displayed. The player can roll up to three times before they must choose a score section (but may do so earlier).
 
+[Software Demo Video](https://www.youtube.com/watch?v=cZN42zq9GlU)
+
 ## Important aspects of Rust
 - Use 'cargo build' and 'cargo run'
 - Dependencies on other libraries are added to .toml and downloaded on 'cargo build'
